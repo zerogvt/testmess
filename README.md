@@ -19,9 +19,9 @@ instead.)
 the latest one click **Source code (zip)**.
 
 **3. Unzip it.** Right-click the downloaded file → **Extract All…** →
-**Extract**. You get a folder called `testmess-0.1`. If opening it shows another
-folder with the same name, go into that one — you want the folder that has
-`testmess.py` in it.
+**Extract**. You get a folder named after the version, such as `testmess-0.2`.
+If opening it shows another folder with the same name, go into that one — you
+want the folder that has `testmess.py` in it.
 
 **4. Open that folder**, click the white address bar at the top of the window,
 type `cmd` and press Enter. A black command window opens in the right place.
