@@ -16,7 +16,7 @@ instead.)
 
 **2. Download the program.** Go to
 [the releases page](https://github.com/zerogvt/testmess/releases), and under
-**0.1** click **Source code (zip)**.
+the latest one click **Source code (zip)**.
 
 **3. Unzip it.** Right-click the downloaded file → **Extract All…** →
 **Extract**. You get a folder called `testmess-0.1`. If opening it shows another
