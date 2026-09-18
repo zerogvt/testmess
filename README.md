@@ -1,5 +1,6 @@
 <!-- feature: exam-variants -->
 # testmess
+Turn one multiple-choice test in Word into any number of shuffled variants, each written twice: a student copy (questions + options) and a professor copy (same paper, plus a "Variant N" banner and the answer key on its own last page).
 
 ## TL;DR — Windows, start here
 
@@ -46,9 +47,11 @@ and using its name instead of `samples\calculus_practice_test_2.docx` runs it on
 your test — as long as it is laid out like the samples
 ([what that means](#what-the-source-document-must-look-like)).
 
+### TL;DR end
+---
 ---
 
-Turn one multiple-choice test in Word into any number of shuffled variants, each
+*testmess* turns one multiple-choice test in Word into any number of shuffled variants, each
 written twice: a student copy (questions + options) and a professor copy (same
 paper, plus a "Variant N" banner and the answer key on its own last page).
 
