@@ -1,0 +1,15 @@
+# feature: exam-variants
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Generated variants: regenerate with `python3 exam_variants.py <source>.docx`.
+# The source test itself stays tracked.
+student_*.docx
+professor_*.docx
+
+# Word lock files, left behind while a document is open
+~$*.docx
