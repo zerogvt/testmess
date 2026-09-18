@@ -361,6 +361,7 @@ included, so no banner or stray blank line can creep back in.
 | `testmess.py` | the program: parse, shuffle, write |
 | `test_testmess.py` | the test suite |
 | `run_tests.sh` | runs the test suite |
+| `CLAUDE.md` | conventions and invariants for anyone changing the code |
 | `samples/calculus_practice_test_2.docx` | sample source test, Latin markers `(A)`–`(D)` |
 | `samples/calculus_practice_test_3.docx` | same test, Greek markers `α)`–`δ)` |
 | `student_N.docx`, `professor_N.docx` | generated output, written to `--out-dir` |
@@ -369,9 +370,10 @@ Every `.docx` lives under `samples/`, sources and generated papers alike. The
 output folder is still `--out-dir`, which defaults to the current directory, so
 add `--out-dir samples` if you want new runs to land there too.
 
-## Known limitation
+## Verification
 
-The generated documents have been checked structurally (valid archive, all parts
-present, well-formed XML, original namespace declarations preserved, equations
-byte-identical), but neither Word nor LibreOffice was available here, so they
-have not been opened in a word processor. Worth one look before printing.
+The generated documents open correctly in Word — confirmed by hand on
+2026-09-18. The automated checks are structural, since no word processor is
+available on the development machine: valid archive, every part of the source
+package present, well-formed XML, the original namespace declarations
+preserved, and every equation identical to the source's markup for markup.
