@@ -20,7 +20,8 @@ from pathlib import Path
 
 import exam_variants as ev
 
-SOURCE = Path(__file__).with_name('calculus_practice_test_2.docx')
+SAMPLES = Path(__file__).parent / 'samples'
+SOURCE = SAMPLES / 'calculus_practice_test_2.docx'
 EXPECTED_KEY = {1: 'A', 2: 'D', 3: 'C', 4: 'A', 5: 'C',
                 6: 'B', 7: 'D', 8: 'A', 9: 'B', 10: 'C'}
 
@@ -32,7 +33,7 @@ FIXTURES = (
    'markers': ['A', 'B', 'C', 'D'],
    'key': EXPECTED_KEY},
   {'name': 'greek',
-   'path': Path(__file__).with_name('calculus_practice_test_3.docx'),
+   'path': SAMPLES / 'calculus_practice_test_3.docx',
    'markers': ['α', 'β', 'γ', 'δ'],
    'key': {1: 'α', 2: 'δ', 3: 'γ', 4: 'α', 5: 'γ',
            6: 'β', 7: 'δ', 8: 'α', 9: 'β', 10: 'γ'}},

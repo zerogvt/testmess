@@ -32,7 +32,7 @@ Python 3.8+. Nothing else — standard library only (`zipfile`, `xml.etree`,
 ## Running it
 
 ```bash
-python3 exam_variants.py calculus_practice_test_2.docx
+python3 exam_variants.py samples/calculus_practice_test_2.docx
 ```
 
 That reads the test and writes 6 files into the current directory:
@@ -59,21 +59,21 @@ Examples:
 
 ```bash
 # five variants
-python3 exam_variants.py calculus_practice_test_2.docx -n 5
+python3 exam_variants.py samples/calculus_practice_test_2.docx -n 5
 
 # reproducible: the same seed always produces exactly the same papers,
 # which is what you want if you have to reprint one of them later
-python3 exam_variants.py calculus_practice_test_2.docx -n 5 --seed 2026
+python3 exam_variants.py samples/calculus_practice_test_2.docx -n 5 --seed 2026
 
 # somewhere other than the current folder
-python3 exam_variants.py calculus_practice_test_2.docx --out-dir ./exams
+python3 exam_variants.py samples/calculus_practice_test_2.docx --out-dir ./exams
 ```
 
 It prints what it did, including each variant's key, so you can check a paper
 without opening it:
 
 ```
-Read 10 questions from calculus_practice_test_2.docx
+Read 10 questions from samples/calculus_practice_test_2.docx
 Variant 1 -> student_1.docx, professor_1.docx   key: 1C, 2C, 3A, 4A, 5D, ...
 ```
 
@@ -99,8 +99,8 @@ With no input available at all — cron, a closed terminal, `< /dev/null` — it
 refuses rather than guessing, and says so. Two ways past it:
 
 ```bash
-python3 exam_variants.py test.docx --force        # yes, replace them
-python3 exam_variants.py test.docx --out-dir v2   # or just write elsewhere
+python3 exam_variants.py samples/test.docx --force        # yes, replace them
+python3 exam_variants.py samples/test.docx --out-dir v2   # or just write elsewhere
 ```
 
 Exit codes: `0` success, `1` the source could not be read or parsed, `2` bad
@@ -108,7 +108,7 @@ arguments, `3` declined the overwrite (nothing written).
 
 ## What the source document must look like
 
-The parser follows the layout of `calculus_practice_test_2.docx`:
+The parser follows the layout of `samples/calculus_practice_test_2.docx`:
 
 - Any front matter (title, instructions) above the first question — copied to
   every variant as-is.
@@ -137,7 +137,7 @@ Three stages, one dictionary between each — the dictionaries are the contract,
 which is what makes the whole thing testable without ever opening Word.
 
 ```
-calculus_practice_test_2.docx
+samples/calculus_practice_test_2.docx
         |
         |  parse_exam()            read the .docx, recognise questions,
         v                          options and the key
@@ -163,7 +163,7 @@ logging and label matching.
 
 ```python
 {
-  'source': 'calculus_practice_test_2.docx',
+  'source': 'samples/calculus_practice_test_2.docx',
   'title': 'Calculus Practice Test',
   'preamble_xml': [<xml>, ...],            # everything above question 1
   'key_templates': {'break': <xml>,        # page break, key heading and one key
@@ -193,7 +193,7 @@ copied only at render time, so building a variant cannot corrupt the source.
 ```python
 {
   'index': 1,
-  'source': 'calculus_practice_test_2.docx',
+  'source': 'samples/calculus_practice_test_2.docx',
   'questions': [
     {'number': 1,            # position in this variant
      'source_number': 7,     # which original question it is
@@ -273,8 +273,8 @@ there and paragraph ids stay unique.
 
 `FunctionalTest` runs the whole pipeline — `.docx` in, `.docx` out, through the
 command line — over **both** sample tests, the Latin-lettered
-`calculus_practice_test_2.docx` and the Greek-lettered
-`calculus_practice_test_3.docx`, asserting the same things of each via
+`samples/calculus_practice_test_2.docx` and the Greek-lettered
+`samples/calculus_practice_test_3.docx`, asserting the same things of each via
 `subTest` — including that every equation in a variant is identical to the
 source's, markup for markup, compared independently of how the namespace
 prefixes happen to be spelled. Nothing about the source documents is
@@ -296,9 +296,13 @@ included, so no banner or stray blank line can creep back in.
 |---|---|
 | `exam_variants.py` | the program: parse, shuffle, write |
 | `test_exam_variants.py` | the test suite |
-| `calculus_practice_test_2.docx` | sample source test, Latin markers `(A)`–`(D)` |
-| `calculus_practice_test_3.docx` | same test, Greek markers `α)`–`δ)` |
-| `student_N.docx`, `professor_N.docx` | generated output |
+| `samples/calculus_practice_test_2.docx` | sample source test, Latin markers `(A)`–`(D)` |
+| `samples/calculus_practice_test_3.docx` | same test, Greek markers `α)`–`δ)` |
+| `student_N.docx`, `professor_N.docx` | generated output, written to `--out-dir` |
+
+Every `.docx` lives under `samples/`, sources and generated papers alike. The
+output folder is still `--out-dir`, which defaults to the current directory, so
+add `--out-dir samples` if you want new runs to land there too.
 
 ## Known limitation
 
