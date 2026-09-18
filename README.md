@@ -1,6 +1,53 @@
 <!-- feature: exam-variants -->
 # exam_variants
 
+## TL;DR — Windows, start here
+
+**1. Make sure you have Python (one time only).** Click Start, type `cmd`, press
+Enter, then type `python --version`. If a version number appears, you are ready —
+skip to step 2. If not, install Python from the official site,
+[python.org/downloads/windows](https://www.python.org/downloads/windows/), and on
+the installer's first screen **tick "Add python.exe to PATH"** before clicking
+Install. A simple walkthrough with pictures:
+[Microsoft's own beginner guide](https://learn.microsoft.com/en-us/windows/python/beginners).
+(If typing `python` pops open the Microsoft Store, install from python.org
+instead.)
+
+**2. Download the program.** Go to
+[the releases page](https://github.com/zerogvt/testmess/releases), and under
+**0.1** click **Source code (zip)**.
+
+**3. Unzip it.** Right-click the downloaded file → **Extract All…** →
+**Extract**. You get a folder called `testmess-0.1`. If opening it shows another
+folder with the same name, go into that one — you want the folder that has
+`exam_variants.py` in it.
+
+**4. Open that folder**, click the white address bar at the top of the window,
+type `cmd` and press Enter. A black command window opens in the right place.
+
+**5. Type this and press Enter:**
+
+```
+python exam_variants.py samples\calculus_practice_test_2.docx
+```
+
+Six Word files appear in the folder: `student_1.docx` and `professor_1.docx`,
+`student_2.docx` and `professor_2.docx`, and so on. Hand out the `student_`
+ones — they carry no answers; the matching `professor_` copy has the key.
+
+Two things you will want next:
+
+```
+python exam_variants.py samples\calculus_practice_test_2.docx -n 5
+```
+
+makes 5 versions instead of 3, and putting **your own** test file in that folder
+and using its name instead of `samples\calculus_practice_test_2.docx` runs it on
+your test — as long as it is laid out like the samples
+([what that means](#what-the-source-document-must-look-like)).
+
+---
+
 Turn one multiple-choice test in Word into any number of shuffled variants, each
 written twice: a student copy (questions + options) and a professor copy (same
 paper, plus a "Variant N" banner and the answer key on its own last page).
@@ -28,6 +75,9 @@ design.
 
 Python 3.8+. Nothing else — standard library only (`zipfile`, `xml.etree`,
 `random`, `argparse`). No virtualenv, no `pip install`.
+
+The examples below use `python3` and forward slashes; on Windows type `python`
+and `samples\...` instead, as in the [TL;DR](#tldr--windows-start-here).
 
 ## Running it
 
