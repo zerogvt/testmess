@@ -51,9 +51,10 @@ your test — as long as it is laid out like the samples
 ---
 ---
 
-*testmess* turns one multiple-choice test in Word into any number of shuffled variants, each
-written twice: a student copy (questions + options) and a professor copy (same
-paper, plus a "Variant N" banner and the answer key on its own last page).
+**testmess** turns one multiple-choice test in Word into any number of shuffled variants, 
+each written twice: 
+- a student copy (questions + options) and 
+- a professor copy (same paper, plus a "Variant N" banner and the answer key on its own last page).
 
 **The student copy adds nothing.** Apart from the reordering and the
 renumbering it is paragraph-for-paragraph the source test — no banner, no
