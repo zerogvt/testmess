@@ -1,5 +1,5 @@
 <!-- feature: exam-variants -->
-# exam_variants
+# testmess
 
 ## TL;DR — Windows, start here
 
@@ -20,7 +20,7 @@ instead.)
 **3. Unzip it.** Right-click the downloaded file → **Extract All…** →
 **Extract**. You get a folder called `testmess-0.1`. If opening it shows another
 folder with the same name, go into that one — you want the folder that has
-`exam_variants.py` in it.
+`testmess.py` in it.
 
 **4. Open that folder**, click the white address bar at the top of the window,
 type `cmd` and press Enter. A black command window opens in the right place.
@@ -28,7 +28,7 @@ type `cmd` and press Enter. A black command window opens in the right place.
 **5. Type this and press Enter:**
 
 ```
-python exam_variants.py samples\calculus_practice_test_2.docx
+python testmess.py samples\calculus_practice_test_2.docx
 ```
 
 Six Word files appear in the folder: `student_1.docx` and `professor_1.docx`,
@@ -38,7 +38,7 @@ ones — they carry no answers; the matching `professor_` copy has the key.
 Two things you will want next:
 
 ```
-python exam_variants.py samples\calculus_practice_test_2.docx -n 5
+python testmess.py samples\calculus_practice_test_2.docx -n 5
 ```
 
 makes 5 versions instead of 3, and putting **your own** test file in that folder
@@ -82,7 +82,7 @@ and `samples\...` instead, as in the [TL;DR](#tldr--windows-start-here).
 ## Running it
 
 ```bash
-python3 exam_variants.py samples/calculus_practice_test_2.docx
+python3 testmess.py samples/calculus_practice_test_2.docx
 ```
 
 That reads the test and writes 6 files into the current directory:
@@ -96,7 +96,7 @@ student_3.docx  professor_3.docx
 Options:
 
 ```
-python3 exam_variants.py DOCX [-n VARIANTS] [--seed SEED] [--out-dir DIR] [-f]
+python3 testmess.py DOCX [-n VARIANTS] [--seed SEED] [--out-dir DIR] [-f]
 
   DOCX                 source .docx test, answer key on the last page
   -n, --variants N     how many variants to create      (default: 3)
@@ -109,14 +109,14 @@ Examples:
 
 ```bash
 # five variants
-python3 exam_variants.py samples/calculus_practice_test_2.docx -n 5
+python3 testmess.py samples/calculus_practice_test_2.docx -n 5
 
 # reproducible: the same seed always produces exactly the same papers,
 # which is what you want if you have to reprint one of them later
-python3 exam_variants.py samples/calculus_practice_test_2.docx -n 5 --seed 2026
+python3 testmess.py samples/calculus_practice_test_2.docx -n 5 --seed 2026
 
 # somewhere other than the current folder
-python3 exam_variants.py samples/calculus_practice_test_2.docx --out-dir ./exams
+python3 testmess.py samples/calculus_practice_test_2.docx --out-dir ./exams
 ```
 
 It prints what it did, including each variant's key, so you can check a paper
@@ -149,8 +149,8 @@ With no input available at all — cron, a closed terminal, `< /dev/null` — it
 refuses rather than guessing, and says so. Two ways past it:
 
 ```bash
-python3 exam_variants.py samples/test.docx --force        # yes, replace them
-python3 exam_variants.py samples/test.docx --out-dir v2   # or just write elsewhere
+python3 testmess.py samples/test.docx --force        # yes, replace them
+python3 testmess.py samples/test.docx --out-dir v2   # or just write elsewhere
 ```
 
 Exit codes: `0` success, `1` the source could not be read or parsed, `2` bad
@@ -308,9 +308,19 @@ generated document.
 58 tests, `unittest` from the standard library (no pytest needed):
 
 ```bash
-python3 -m unittest test_exam_variants        # quiet
-python3 -m unittest test_exam_variants -v     # per-test
-python3 test_exam_variants.py                 # same, verbose
+./run_tests.sh                                   # all of them, quietly
+./run_tests.sh -v                                # one line per test
+./run_tests.sh test_testmess.FunctionalTest      # one class
+```
+
+`run_tests.sh` finds `python3` (or `python`, or whatever `PYTHON=` names), runs
+from its own directory so it works from anywhere, adds the test module when you
+do not name one, and exits non-zero if anything fails. Without it, or on Windows:
+
+```bash
+python3 -m unittest test_testmess        # quiet
+python3 -m unittest test_testmess -v     # per-test
+python3 test_testmess.py                 # same, verbose
 ```
 
 Most of them run against the dictionaries — parsing, the key page not being read
@@ -344,8 +354,9 @@ included, so no banner or stray blank line can creep back in.
 
 | File | |
 |---|---|
-| `exam_variants.py` | the program: parse, shuffle, write |
-| `test_exam_variants.py` | the test suite |
+| `testmess.py` | the program: parse, shuffle, write |
+| `test_testmess.py` | the test suite |
+| `run_tests.sh` | runs the test suite |
 | `samples/calculus_practice_test_2.docx` | sample source test, Latin markers `(A)`–`(D)` |
 | `samples/calculus_practice_test_3.docx` | same test, Greek markers `α)`–`δ)` |
 | `student_N.docx`, `professor_N.docx` | generated output, written to `--out-dir` |

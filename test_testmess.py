@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # feature: exam-variants
-"""Unit tests for exam_variants (stdlib unittest; no pytest in this env).
+"""Unit tests for testmess (stdlib unittest; no pytest in this env).
 
 Most assertions run against the intermediate dictionaries -- that is what they
 are there for -- with a smaller set of end-to-end checks on the written .docx
@@ -8,6 +8,8 @@ packages, including a count of the equation nodes so a lost <m:oMath> fails the
 build instead of quietly reaching a student.
 """
 
+import contextlib
+import io
 import os
 import random
 import re
@@ -18,7 +20,7 @@ import zipfile
 from collections import Counter
 from pathlib import Path
 
-import exam_variants as ev
+import testmess as tm
 
 SAMPLES = Path(__file__).parent / 'samples'
 SOURCE = SAMPLES / 'calculus_practice_test_2.docx'
@@ -40,17 +42,28 @@ FIXTURES = (
 )
 
 
+def run_cli(argv, ask=None):
+  """Run the command line with its chatter captured, and return the exit code.
+
+  The tests exercise main() dozens of times; without this the real result of a
+  run -- the one line saying whether the suite passed -- scrolls off the top.
+  """
+  out, err = io.StringIO(), io.StringIO()
+  with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+    return tm.main(argv, ask=ask)
+
+
 def document_root(docx_path):
-  return ET.fromstring(ev.read_document_xml(docx_path))
+  return ET.fromstring(tm.read_document_xml(docx_path))
 
 
 def count_math(xml_root):
-  return len(list(xml_root.iter(ev.qn('m', 'oMath'))))
+  return len(list(xml_root.iter(tm.qn('m', 'oMath'))))
 
 
 def strip_label(text):
   """Drop a leading "7." or "(B)" so a paragraph can be compared by content."""
-  for pattern in (ev.QUESTION_LABEL, ev.OPTION_LABEL):
+  for pattern in (tm.QUESTION_LABEL, tm.OPTION_LABEL):
     match = pattern.match(text)
     if match:
       return text[match.end():].strip()
@@ -70,23 +83,23 @@ def math_signature(xml_root):
     return (element.tag, tuple(sorted(element.attrib.items())),
             (element.text or '').strip(), children)
 
-  return Counter(shape(node) for node in xml_root.iter(ev.qn('m', 'oMath')))
+  return Counter(shape(node) for node in xml_root.iter(tm.qn('m', 'oMath')))
 
 
 def body_paragraphs(xml_root):
-  body = xml_root.find(ev.qn('w', 'body'))
-  return [p for p in body if p.tag == ev.qn('w', 'p')]
+  body = xml_root.find(tm.qn('w', 'body'))
+  return [p for p in body if p.tag == tm.qn('w', 'p')]
 
 
 def paragraph_texts(xml_root):
-  return [ev.paragraph_text(p).strip() for p in body_paragraphs(xml_root)]
+  return [tm.paragraph_text(p).strip() for p in body_paragraphs(xml_root)]
 
 
 class ParseExamTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls.exam = ev.parse_exam(SOURCE)
+    cls.exam = tm.parse_exam(SOURCE)
 
   def test_reads_every_question(self):
     numbers = [q['number'] for q in self.exam['questions']]
@@ -134,36 +147,36 @@ class ParseExamTest(unittest.TestCase):
 class ValidationTest(unittest.TestCase):
 
   def setUp(self):
-    self.exam = ev.parse_exam(SOURCE)
+    self.exam = tm.parse_exam(SOURCE)
 
   def test_missing_key_entry_is_rejected(self):
     self.exam['questions'][2]['answer'] = None
     with self.assertRaises(ValueError):
-      ev.validate_exam(self.exam)
+      tm.validate_exam(self.exam)
 
   def test_key_pointing_at_a_missing_option_is_rejected(self):
     self.exam['questions'][2]['answer'] = 'Z'
     with self.assertRaises(ValueError):
-      ev.validate_exam(self.exam)
+      tm.validate_exam(self.exam)
 
   def test_question_without_options_is_rejected(self):
     self.exam['questions'][0]['options'] = []
     with self.assertRaises(ValueError):
-      ev.validate_exam(self.exam)
+      tm.validate_exam(self.exam)
 
 
 class MakeVariantTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls.exam = ev.parse_exam(SOURCE)
+    cls.exam = tm.parse_exam(SOURCE)
 
   def variants(self, count=5, seed=7):
-    return ev.make_variants(self.exam, count, seed)
+    return tm.make_variants(self.exam, count, seed)
 
   def test_default_count_is_three(self):
     # The CLI default, checked where it is declared.
-    self.assertEqual(ev.parse_args([str(SOURCE)]).variants, 3)
+    self.assertEqual(tm.parse_args([str(SOURCE)]).variants, 3)
 
   def test_questions_are_a_permutation_renumbered_from_one(self):
     for variant in self.variants():
@@ -215,17 +228,17 @@ class MakeVariantTest(unittest.TestCase):
     self.assertTrue(any(item != ('A', 'B', 'C', 'D') for item in letters))
 
   def test_same_seed_gives_the_same_variants(self):
-    first = ev.make_variants(self.exam, 3, seed=42)
-    second = ev.make_variants(self.exam, 3, seed=42)
+    first = tm.make_variants(self.exam, 3, seed=42)
+    second = tm.make_variants(self.exam, 3, seed=42)
     self.assertEqual(_signature(first), _signature(second))
 
   def test_different_seeds_give_different_variants(self):
-    self.assertNotEqual(_signature(ev.make_variants(self.exam, 3, seed=1)),
-                        _signature(ev.make_variants(self.exam, 3, seed=2)))
+    self.assertNotEqual(_signature(tm.make_variants(self.exam, 3, seed=1)),
+                        _signature(tm.make_variants(self.exam, 3, seed=2)))
 
   def test_variant_does_not_mutate_the_exam(self):
     before = _exam_signature(self.exam)
-    ev.make_variants(self.exam, 3, seed=11)
+    tm.make_variants(self.exam, 3, seed=11)
     self.assertEqual(_exam_signature(self.exam), before)
 
 
@@ -251,48 +264,48 @@ def _signature(variants):
 class LabelRewritingTest(unittest.TestCase):
 
   def paragraph(self, *runs):
-    paragraph = ET.Element(ev.qn('w', 'p'))
+    paragraph = ET.Element(tm.qn('w', 'p'))
     for text in runs:
-      run = ET.SubElement(paragraph, ev.qn('w', 'r'))
-      node = ET.SubElement(run, ev.qn('w', 't'))
+      run = ET.SubElement(paragraph, tm.qn('w', 'r'))
+      node = ET.SubElement(run, tm.qn('w', 't'))
       node.text = text
     return paragraph
 
   def test_number_split_across_runs(self):
     paragraph = self.paragraph('10', '.  ', 'Find the area')
-    self.assertTrue(ev.relabel(paragraph, ev.QUESTION_LABEL, '2'))
-    self.assertEqual(ev.paragraph_text(paragraph), '2.  Find the area')
+    self.assertTrue(tm.relabel(paragraph, tm.QUESTION_LABEL, '2'))
+    self.assertEqual(tm.paragraph_text(paragraph), '2.  Find the area')
 
   def test_letter_split_across_runs(self):
     paragraph = self.paragraph('(D', ')  Does not exist')
-    self.assertTrue(ev.relabel(paragraph, ev.OPTION_LABEL, 'B'))
-    self.assertEqual(ev.paragraph_text(paragraph), '(B)  Does not exist')
+    self.assertTrue(tm.relabel(paragraph, tm.OPTION_LABEL, 'B'))
+    self.assertEqual(tm.paragraph_text(paragraph), '(B)  Does not exist')
 
   def test_label_inside_a_single_run(self):
     paragraph = self.paragraph('(C)  12')
-    self.assertTrue(ev.relabel(paragraph, ev.OPTION_LABEL, 'A'))
-    self.assertEqual(ev.paragraph_text(paragraph), '(A)  12')
+    self.assertTrue(tm.relabel(paragraph, tm.OPTION_LABEL, 'A'))
+    self.assertEqual(tm.paragraph_text(paragraph), '(A)  12')
 
   def test_only_the_label_run_is_touched(self):
     paragraph = self.paragraph('7', '.  ', 'Evaluate:  ', ' dx')
-    ev.relabel(paragraph, ev.QUESTION_LABEL, '3')
-    runs = [node.text for node in paragraph.iter(ev.qn('w', 't'))]
+    tm.relabel(paragraph, tm.QUESTION_LABEL, '3')
+    runs = [node.text for node in paragraph.iter(tm.qn('w', 't'))]
     self.assertEqual(runs, ['3', '.  ', 'Evaluate:  ', ' dx'])
 
   def test_paragraph_without_a_label_is_left_alone(self):
     paragraph = self.paragraph('Choose the best answer.')
-    self.assertFalse(ev.relabel(paragraph, ev.QUESTION_LABEL, '1'))
-    self.assertEqual(ev.paragraph_text(paragraph), 'Choose the best answer.')
+    self.assertFalse(tm.relabel(paragraph, tm.QUESTION_LABEL, '1'))
+    self.assertEqual(tm.paragraph_text(paragraph), 'Choose the best answer.')
 
 
 class WrittenDocumentTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls.exam = ev.parse_exam(SOURCE)
-    cls.variant = ev.make_variants(cls.exam, 1, seed=5)[0]
+    cls.exam = tm.parse_exam(SOURCE)
+    cls.variant = tm.make_variants(cls.exam, 1, seed=5)[0]
     cls.tmp = tempfile.TemporaryDirectory()
-    cls.student, cls.professor = ev.write_variant(cls.exam, cls.variant,
+    cls.student, cls.professor = tm.write_variant(cls.exam, cls.variant,
                                                   cls.tmp.name)
 
   @classmethod
@@ -313,7 +326,7 @@ class WrittenDocumentTest(unittest.TestCase):
 
   def test_documents_are_well_formed_and_keep_the_w_prefix(self):
     for path in (self.student, self.professor):
-      xml_text = ev.read_document_xml(path)
+      xml_text = tm.read_document_xml(path)
       ET.fromstring(xml_text)
       self.assertTrue(xml_text.startswith('<?xml version="1.0" '
                                           'encoding="UTF-8" standalone="yes"?>'))
@@ -328,11 +341,11 @@ class WrittenDocumentTest(unittest.TestCase):
 
   def test_student_document_has_no_key(self):
     texts = paragraph_texts(document_root(self.student))
-    self.assertFalse(any(ev.KEY_HEADING.match(text) for text in texts))
-    self.assertEqual(sum(1 for t in texts if ev.KEY_ENTRY.match(t)), 0)
+    self.assertFalse(any(tm.KEY_HEADING.match(text) for text in texts))
+    self.assertEqual(sum(1 for t in texts if tm.KEY_ENTRY.match(t)), 0)
 
   def test_key_lines_do_not_share_paragraph_ids(self):
-    para_id = ev.qn('w14', 'paraId')
+    para_id = tm.qn('w14', 'paraId')
     ids = []
     for paragraph in body_paragraphs(document_root(self.professor)):
       value = paragraph.get(para_id)
@@ -344,26 +357,26 @@ class WrittenDocumentTest(unittest.TestCase):
     texts = paragraph_texts(document_root(self.professor))
     entries = []
     for text in texts:
-      match = ev.KEY_ENTRY.match(text)
+      match = tm.KEY_ENTRY.match(text)
       if match:
         entries.append((int(match.group(1)), match.group(2)))
     expected = [(q['number'], q['answer']) for q in self.variant['questions']]
     self.assertEqual(entries, expected)
-    self.assertTrue(any(ev.KEY_HEADING.match(text) for text in texts))
+    self.assertTrue(any(tm.KEY_HEADING.match(text) for text in texts))
 
   def test_questions_are_renumbered_in_order_in_both_documents(self):
     for path in (self.student, self.professor):
       texts = paragraph_texts(document_root(path))
       stop = len(texts)
       for position, text in enumerate(texts):
-        if ev.KEY_HEADING.match(text):
+        if tm.KEY_HEADING.match(text):
           stop = position
           break
       numbers = []
       letters = []
       for text in texts[:stop]:
-        question = ev.QUESTION_LABEL.match(text)
-        option = ev.OPTION_LABEL.match(text)
+        question = tm.QUESTION_LABEL.match(text)
+        option = tm.OPTION_LABEL.match(text)
         if question:
           numbers.append(int(question.group(1)))
           letters.append([])
@@ -389,7 +402,7 @@ class WrittenDocumentTest(unittest.TestCase):
     student = [t for t in paragraph_texts(document_root(self.student))]
     professor = paragraph_texts(document_root(self.professor))
     for text in student:
-      if ev.QUESTION_LABEL.match(text) or ev.OPTION_LABEL.match(text):
+      if tm.QUESTION_LABEL.match(text) or tm.OPTION_LABEL.match(text):
         self.assertIn(text, professor)
 
 
@@ -405,7 +418,7 @@ class MarkerRecognitionTest(unittest.TestCase):
     ]
     for text, expected in samples:
       with self.subTest(text=text):
-        match = ev.OPTION_LABEL.match(text)
+        match = tm.OPTION_LABEL.match(text)
         self.assertIsNotNone(match, text)
         self.assertEqual(match.group(1), expected)
 
@@ -414,25 +427,25 @@ class MarkerRecognitionTest(unittest.TestCase):
                  'Note: assume x > 0', 'Choose the best answer.',
                  'Eq. 4 applies here', '12x3 - 4x'):
       with self.subTest(text=text):
-        self.assertIsNone(ev.OPTION_LABEL.match(text))
+        self.assertIsNone(tm.OPTION_LABEL.match(text))
 
   def test_key_entries_in_any_script(self):
     samples = [('1.  A', ('1', 'A')), ('10)  δ', ('10', 'δ')),
                ('3.  (c)', ('3', 'c')), ('7.  iii', ('7', 'iii'))]
     for text, expected in samples:
       with self.subTest(text=text):
-        match = ev.KEY_ENTRY.match(text)
+        match = tm.KEY_ENTRY.match(text)
         self.assertIsNotNone(match, text)
         self.assertEqual(match.groups(), expected)
 
   def test_key_entry_does_not_swallow_a_question(self):
-    self.assertIsNone(ev.KEY_ENTRY.match('1.  Evaluate the limit'))
+    self.assertIsNone(tm.KEY_ENTRY.match('1.  Evaluate the limit'))
 
   def test_markers_compare_case_insensitively(self):
-    self.assertTrue(ev.same_marker('A', 'a'))
-    self.assertTrue(ev.same_marker('α', 'Α'))
-    self.assertFalse(ev.same_marker('α', 'a'))
-    self.assertFalse(ev.same_marker('A', 'B'))
+    self.assertTrue(tm.same_marker('A', 'a'))
+    self.assertTrue(tm.same_marker('α', 'Α'))
+    self.assertFalse(tm.same_marker('α', 'a'))
+    self.assertFalse(tm.same_marker('A', 'B'))
 
 
 class FunctionalTest(unittest.TestCase):
@@ -451,7 +464,7 @@ class FunctionalTest(unittest.TestCase):
   def test_parses_both_marker_alphabets(self):
     for fixture in FIXTURES:
       with self.subTest(fixture['name']):
-        exam = ev.parse_exam(fixture['path'])
+        exam = tm.parse_exam(fixture['path'])
         self.assertEqual(len(exam['questions']), 10)
         found = {}
         for question in exam['questions']:
@@ -464,8 +477,8 @@ class FunctionalTest(unittest.TestCase):
   def test_variants_keep_the_source_markers(self):
     for fixture in FIXTURES:
       with self.subTest(fixture['name']):
-        exam = ev.parse_exam(fixture['path'])
-        for variant in ev.make_variants(exam, 3, seed=4):
+        exam = tm.parse_exam(fixture['path'])
+        for variant in tm.make_variants(exam, 3, seed=4):
           for question in variant['questions']:
             markers = [option['letter'] for option in question['options']]
             self.assertEqual(markers, fixture['markers'])
@@ -480,17 +493,17 @@ class FunctionalTest(unittest.TestCase):
     """
     for fixture in FIXTURES:
       with self.subTest(fixture['name']):
-        exam = ev.parse_exam(fixture['path'])
+        exam = tm.parse_exam(fixture['path'])
         expected = Counter()
         for item in exam['preamble_xml']:
-          expected[ev.paragraph_text(ET.fromstring(item)).strip()] += 1
+          expected[tm.paragraph_text(ET.fromstring(item)).strip()] += 1
         for question in exam['questions']:
           expected[question['stem_text']] += 1
           for option in question['options']:
             expected[option['text']] += 1
 
         with tempfile.TemporaryDirectory() as folder:
-          self.assertEqual(ev.main([str(fixture['path']), '-n', '1',
+          self.assertEqual(run_cli([str(fixture['path']), '-n', '1',
                                     '--seed', '3', '--out-dir', folder]), 0)
           student = document_root(Path(folder) / 'student_1.docx')
           professor = document_root(Path(folder) / 'professor_1.docx')
@@ -514,7 +527,7 @@ class FunctionalTest(unittest.TestCase):
         self._check_written_documents(fixture)
 
   def _check_written_documents(self, fixture):
-    exam = ev.parse_exam(fixture['path'])
+    exam = tm.parse_exam(fixture['path'])
     by_number = {q['number']: q for q in exam['questions']}
     # Counted from the source rather than hard-coded: these documents get
     # re-exported, and the invariant is "the variants hold every equation the
@@ -523,7 +536,7 @@ class FunctionalTest(unittest.TestCase):
     self.assertGreater(expected_math, 0, fixture['name'])
     expected_shapes = math_signature(document_root(fixture['path']))
     with tempfile.TemporaryDirectory() as folder:
-      self.assertEqual(ev.main([str(fixture['path']), '-n', '2', '--seed', '13',
+      self.assertEqual(run_cli([str(fixture['path']), '-n', '2', '--seed', '13',
                                 '--out-dir', folder]), 0)
       written = sorted(path.name for path in Path(folder).glob('*.docx'))
       self.assertEqual(written, ['professor_1.docx', 'professor_2.docx',
@@ -531,7 +544,7 @@ class FunctionalTest(unittest.TestCase):
 
       # main() reshuffles internally, so rebuild the same variants to compare
       # the papers against: same source, same seed, same count.
-      variants = ev.make_variants(exam, 2, seed=13)
+      variants = tm.make_variants(exam, 2, seed=13)
       for variant in variants:
         student = Path(folder) / ('student_%d.docx' % variant['index'])
         professor = Path(folder) / ('professor_%d.docx' % variant['index'])
@@ -546,14 +559,14 @@ class FunctionalTest(unittest.TestCase):
           self._check_question_layout(root, fixture, path.name)
 
         student_texts = paragraph_texts(document_root(student))
-        self.assertFalse(any(ev.KEY_HEADING.match(t) for t in student_texts))
-        self.assertFalse(any(ev.KEY_ENTRY.match(t) for t in student_texts))
+        self.assertFalse(any(tm.KEY_HEADING.match(t) for t in student_texts))
+        self.assertFalse(any(tm.KEY_ENTRY.match(t) for t in student_texts))
 
         professor_texts = paragraph_texts(document_root(professor))
-        self.assertTrue(any(ev.KEY_HEADING.match(t) for t in professor_texts))
+        self.assertTrue(any(tm.KEY_HEADING.match(t) for t in professor_texts))
         entries = []
         for text in professor_texts:
-          match = ev.KEY_ENTRY.match(text)
+          match = tm.KEY_ENTRY.match(text)
           if match:
             entries.append((int(match.group(1)), match.group(2)))
         self.assertEqual(entries,
@@ -565,9 +578,9 @@ class FunctionalTest(unittest.TestCase):
         for question in variant['questions']:
           source = by_number[question['source_number']]
           expected = next(o['text'] for o in source['options']
-                          if ev.same_marker(o['letter'], source['answer']))
+                          if tm.same_marker(o['letter'], source['answer']))
           actual = next(o['text'] for o in question['options']
-                        if ev.same_marker(o['letter'], question['answer']))
+                        if tm.same_marker(o['letter'], question['answer']))
           self.assertEqual(actual, expected,
                            'variant %d question %d'
                            % (variant['index'], question['number']))
@@ -576,10 +589,10 @@ class FunctionalTest(unittest.TestCase):
     numbers = []
     markers = []
     for text in paragraph_texts(root):
-      if ev.KEY_HEADING.match(text):
+      if tm.KEY_HEADING.match(text):
         break
-      question = ev.QUESTION_LABEL.match(text)
-      option = ev.OPTION_LABEL.match(text)
+      question = tm.QUESTION_LABEL.match(text)
+      option = tm.OPTION_LABEL.match(text)
       if question:
         numbers.append(int(question.group(1)))
         markers.append([])
@@ -617,12 +630,12 @@ class OverwriteTest(unittest.TestCase):
     return open(os.devnull, 'w')
 
   def test_variant_paths_lists_both_documents_per_variant(self):
-    names = [path.name for path in ev.variant_paths(self.dir, 2)]
+    names = [path.name for path in tm.variant_paths(self.dir, 2)]
     self.assertEqual(names, ['student_1.docx', 'professor_1.docx',
                              'student_2.docx', 'professor_2.docx'])
 
   def test_no_question_when_nothing_exists(self):
-    ok = ev.confirm_overwrite(ev.variant_paths(self.dir, 3),
+    ok = tm.confirm_overwrite(tm.variant_paths(self.dir, 3),
                               ask=self.answer('n'))
     self.assertTrue(ok)
     self.assertEqual(self.asked, [])
@@ -630,7 +643,7 @@ class OverwriteTest(unittest.TestCase):
   def test_no_question_with_force(self):
     self.existing('student_1.docx')
     with self.quiet() as devnull:
-      ok = ev.confirm_overwrite(ev.variant_paths(self.dir, 1), force=True,
+      ok = tm.confirm_overwrite(tm.variant_paths(self.dir, 1), force=True,
                                 ask=self.answer('n'), stream=devnull)
     self.assertTrue(ok)
     self.assertEqual(self.asked, [])
@@ -638,7 +651,7 @@ class OverwriteTest(unittest.TestCase):
   def test_asks_once_for_the_whole_run(self):
     self.existing('student_1.docx', 'professor_2.docx')
     with self.quiet() as devnull:
-      ok = ev.confirm_overwrite(ev.variant_paths(self.dir, 2),
+      ok = tm.confirm_overwrite(tm.variant_paths(self.dir, 2),
                                 ask=self.answer('y'), stream=devnull)
     self.assertTrue(ok)
     self.assertEqual(len(self.asked), 1)
@@ -651,7 +664,7 @@ class OverwriteTest(unittest.TestCase):
       with self.subTest(reply=reply):
         with self.quiet() as devnull:
           self.assertEqual(
-            ev.confirm_overwrite(ev.variant_paths(self.dir, 1),
+            tm.confirm_overwrite(tm.variant_paths(self.dir, 1),
                                  ask=self.answer(reply), stream=devnull),
             expected)
 
@@ -661,8 +674,9 @@ class OverwriteTest(unittest.TestCase):
     def ask(prompt):
       raise EOFError
 
-    with self.quiet() as devnull:
-      self.assertFalse(ev.confirm_overwrite(ev.variant_paths(self.dir, 1),
+    # The "nobody to ask" line goes to stderr by design, so silence that too.
+    with self.quiet() as devnull, contextlib.redirect_stderr(io.StringIO()):
+      self.assertFalse(tm.confirm_overwrite(tm.variant_paths(self.dir, 1),
                                             ask=ask, stream=devnull))
 
   def test_interrupt_means_no(self):
@@ -672,18 +686,18 @@ class OverwriteTest(unittest.TestCase):
       raise KeyboardInterrupt
 
     with self.quiet() as devnull:
-      self.assertFalse(ev.confirm_overwrite(ev.variant_paths(self.dir, 1),
+      self.assertFalse(tm.confirm_overwrite(tm.variant_paths(self.dir, 1),
                                             ask=ask, stream=devnull))
 
   def test_declining_leaves_every_file_untouched(self):
-    self.assertEqual(ev.main([str(SOURCE), '-n', '2', '--seed', '1',
+    self.assertEqual(run_cli([str(SOURCE), '-n', '2', '--seed', '1',
                               '--out-dir', str(self.dir)]), 0)
     before = {}
     for path in self.dir.glob('*.docx'):
       before[path.name] = path.read_bytes()
     self.assertEqual(len(before), 4)
 
-    code = ev.main([str(SOURCE), '-n', '2', '--seed', '99',
+    code = run_cli([str(SOURCE), '-n', '2', '--seed', '99',
                     '--out-dir', str(self.dir)], ask=self.answer('n'))
     self.assertEqual(code, 3)
     self.assertEqual(len(self.asked), 1)
@@ -693,18 +707,18 @@ class OverwriteTest(unittest.TestCase):
     self.assertEqual(after, before)
 
   def test_agreeing_replaces_them(self):
-    self.assertEqual(ev.main([str(SOURCE), '-n', '1', '--seed', '1',
+    self.assertEqual(run_cli([str(SOURCE), '-n', '1', '--seed', '1',
                               '--out-dir', str(self.dir)]), 0)
     before = (self.dir / 'student_1.docx').read_bytes()
-    code = ev.main([str(SOURCE), '-n', '1', '--seed', '99',
+    code = run_cli([str(SOURCE), '-n', '1', '--seed', '99',
                     '--out-dir', str(self.dir)], ask=self.answer('y'))
     self.assertEqual(code, 0)
     self.assertNotEqual((self.dir / 'student_1.docx').read_bytes(), before)
 
   def test_force_replaces_without_asking(self):
-    self.assertEqual(ev.main([str(SOURCE), '-n', '1', '--seed', '1',
+    self.assertEqual(run_cli([str(SOURCE), '-n', '1', '--seed', '1',
                               '--out-dir', str(self.dir)]), 0)
-    code = ev.main([str(SOURCE), '-n', '1', '--seed', '99', '--force',
+    code = run_cli([str(SOURCE), '-n', '1', '--seed', '99', '--force',
                     '--out-dir', str(self.dir)], ask=self.answer('n'))
     self.assertEqual(code, 0)
     self.assertEqual(self.asked, [])
@@ -714,7 +728,7 @@ class OverwriteTest(unittest.TestCase):
     # silently half-replaced folder.
     self.existing('professor_2.docx')
     with self.quiet() as devnull:
-      ok = ev.confirm_overwrite(ev.variant_paths(self.dir, 2),
+      ok = tm.confirm_overwrite(tm.variant_paths(self.dir, 2),
                                 ask=self.answer('n'), stream=devnull)
     self.assertFalse(ok)
     self.assertEqual(len(self.asked), 1)
@@ -724,7 +738,7 @@ class CommandLineTest(unittest.TestCase):
 
   def test_end_to_end_writes_two_files_per_variant(self):
     with tempfile.TemporaryDirectory() as folder:
-      code = ev.main([str(SOURCE), '-n', '4', '--seed', '9',
+      code = run_cli([str(SOURCE), '-n', '4', '--seed', '9',
                       '--out-dir', folder])
       self.assertEqual(code, 0)
       written = sorted(p.name for p in Path(folder).glob('*.docx'))
@@ -735,10 +749,10 @@ class CommandLineTest(unittest.TestCase):
       self.assertEqual(written, sorted(expected))
 
   def test_missing_file_exits_non_zero(self):
-    self.assertEqual(ev.main(['no_such_file.docx']), 1)
+    self.assertEqual(run_cli(['no_such_file.docx']), 1)
 
   def test_zero_variants_is_rejected(self):
-    self.assertEqual(ev.main([str(SOURCE), '-n', '0']), 2)
+    self.assertEqual(run_cli([str(SOURCE), '-n', '0']), 2)
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ __pycache__/
 .venv/
 venv/
 
-# Generated variants: regenerate with `python3 exam_variants.py <source>.docx`.
+# Generated variants: regenerate with `python3 testmess.py <source>.docx`.
 # The source test itself stays tracked.
 student_*.docx
 professor_*.docx
